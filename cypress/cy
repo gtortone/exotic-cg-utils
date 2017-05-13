@@ -1,0 +1,6 @@
+#!/usr/bin/python -B
+
+from cypress import Cypress, CypressError, CypressShell
+from array import array
+
+CypressShell().cmdloop()
