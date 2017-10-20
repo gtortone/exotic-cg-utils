@@ -39,9 +39,9 @@
 #define BUFFER_SIZE (1024*16)
 
 #define BLOCK_WRITE
-// #define ASYNC_WRITE
-// #define BACKGROUND_READ
-// #define INTERLACED_READ_WRITE
+//#define ASYNC_WRITE
+//#define BACKGROUND_READ
+//#define INTERLACED_READ_WRITE
 
 #include <sys/time.h>
 #include <unistd.h>
@@ -86,7 +86,6 @@ struct udata_s {
 	uint16_t device_product;
 	const char *device_string;
 	int device_channel;
-	int eeprom_size;
 	int buffer_size;
 	struct buffer_s buffer[BUFFER_SIZE];
 	struct read_job_s *job_fifo_out, *job_fifo_in;
@@ -158,8 +157,7 @@ static int my_ftdi_read_data(struct ftdi_context *ftdi, unsigned char *buf, int 
 
 static int my_ftdi_write_data(struct udata_s *u, unsigned char *buf, int size, int sync)
 {
-#ifdef BLOCK_WRITE
-	int rc, total_queued = 0;
+	int total_queued = 0;
 
 	sync = 1;
 
@@ -169,13 +167,19 @@ static int my_ftdi_write_data(struct udata_s *u, unsigned char *buf, int size, i
 			if (dumpfile)
 				fprintf(dumpfile, "WRITE %d BYTES (buffer full)\n", u->ftdibuf_len);
 #ifdef ASYNC_WRITE
-			rc = ftdi_write_data_async(&u->ftdic, u->ftdibuf, u->ftdibuf_len);
+			void *vres = ftdi_write_data_submit(&u->ftdic, u->ftdibuf, u->ftdibuf_len);
+ 
+                        if(!vres) {
+                           fprintf(stderr, "error ftdi_write_data_submit\n");
+                           return -1;
+                        }
+
 #else
-			rc = ftdi_write_data(&u->ftdic, u->ftdibuf, u->ftdibuf_len);
-#endif
+			int rc = ftdi_write_data(&u->ftdic, u->ftdibuf, u->ftdibuf_len);
 			if (rc != u->ftdibuf_len)
 				return -1;
 			u->ftdibuf_len = 0;
+#endif
 		}
 
 		int chunksize = 4096 - u->ftdibuf_len;
@@ -193,23 +197,21 @@ static int my_ftdi_write_data(struct udata_s *u, unsigned char *buf, int size, i
 		if (dumpfile)
 			fprintf(dumpfile, "WRITE %d BYTES (sync)\n", u->ftdibuf_len);
 #ifdef ASYNC_WRITE
-		rc = ftdi_write_data_async(&u->ftdic, u->ftdibuf, u->ftdibuf_len);
+                void *vres = ftdi_write_data_submit(&u->ftdic, u->ftdibuf, u->ftdibuf_len);
+
+                        if(!vres) {
+                           fprintf(stderr, "error ftdi_write_data_submit\n");
+                           return -1;
+                        }
 #else
-		rc = ftdi_write_data(&u->ftdic, u->ftdibuf, u->ftdibuf_len);
-#endif
+		int rc = ftdi_write_data(&u->ftdic, u->ftdibuf, u->ftdibuf_len);
 		if (rc != u->ftdibuf_len)
 			return -1;
 		u->ftdibuf_len = 0;
+#endif
 	}
 
 	return total_queued;
-#else
-#  ifdef ASYNC_WRITE
-	return ftdi_write_data_async(&u->ftdic, buf, size);
-#  else
-	return ftdi_write_data(&u->ftdic, buf, size);
-#  endif
-#endif
 }
 
 static struct read_job_s *new_read_job(struct udata_s *u, int data_len, int bits_len, struct buffer_s *buffer, job_handler_t *handler)
@@ -363,10 +365,11 @@ static void process_next_read_job(struct udata_s *u)
 	if (!u->job_fifo_out)
 		return;
 
+/*
 #ifdef ASYNC_WRITE
 	ftdi_async_complete(&u->ftdic,1);
 #endif
-
+*/
 	struct read_job_s *job = u->job_fifo_out;
 	
 	u->job_fifo_out = job->next;
@@ -530,9 +533,6 @@ static int h_setup(struct libxsvf_host *h)
 	if (ftdi_init(&u->ftdic) < 0)
 		return -1;
 	
-	if (u->eeprom_size > 0)
-		u->ftdic.eeprom_size = u->eeprom_size;
-
 	if (u->device_channel > 0) {
 		enum ftdi_interface interface =
 			u->device_channel == 1 ? INTERFACE_A :
@@ -823,20 +823,6 @@ static struct libxsvf_host h = {
 	.user_data = &u
 };
 
-static uint16_t eeprom_checksum(unsigned char *data, int len)
-{
-	uint16_t checksum = 0xAAAA;
-	int i;
-
-	for (i = 0; i < len; i+=2) {
-		uint16_t value = (data[i+1] << 8) | data[i];
-		checksum = value ^ checksum;
-		checksum = (checksum << 1) | (checksum >> 15);
-	}
-
-	return checksum;
-}
-
 const char *progname;
 
 static void help()
@@ -852,7 +838,7 @@ static void help()
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Usage: %s [ -v[v..] ] [ -d dumpfile ] [ -L | -B ] [ -S ] [ -F ] \\\n", progname);
 	fprintf(stderr, "      %*s [ -D vendor:product ] [ -C channel ] [ -f freq[k|M] ] \\\n", (int)(strlen(progname)+1), "");
-	fprintf(stderr, "      %*s [ -Z eeprom-size] [ [-G|-I] -W eeprom-filename ] [ -R eeprom-filename ] \\\n", (int)(strlen(progname)+1), "");
+	fprintf(stderr, "      %*s", (int)(strlen(progname)+1), "");
 	fprintf(stderr, "      %*s { -s svf-file | -x xsvf-file | -c } ...\n", (int)(strlen(progname)+1), "");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "   -v\n");
@@ -887,21 +873,6 @@ static void help()
 	fprintf(stderr, "   -C channel\n");
 	fprintf(stderr, "          Select channel on target device (A, B, C or D)\n");
 	fprintf(stderr, "\n");
-	fprintf(stderr, "   -Z eeprom-size\n");
-	fprintf(stderr, "          Set size of the FTDI EEPROM\n");
-	fprintf(stderr, "\n");
-	fprintf(stderr, "   -G\n");
-	fprintf(stderr, "          Generate checksum before writing EEPROM data\n");
-	fprintf(stderr, "\n");
-	fprintf(stderr, "   -I\n");
-	fprintf(stderr, "          Ignore (do not check) checksum before writing EEPROM data\n");
-	fprintf(stderr, "\n");
-	fprintf(stderr, "   -W eeprom-filename\n");
-	fprintf(stderr, "          Write content of the given file to the FTDI EEPROM\n");
-	fprintf(stderr, "\n");
-	fprintf(stderr, "   -R eeprom-filename\n");
-	fprintf(stderr, "          Write content of the FTDI EEPROM to the given file\n");
-	fprintf(stderr, "\n");
 	fprintf(stderr, "   -s svf-file\n");
 	fprintf(stderr, "          Play the specified SVF file\n");
 	fprintf(stderr, "\n");
@@ -918,8 +889,6 @@ int main(int argc, char **argv)
 {
 	int rc = 0;
 	int gotaction = 0;
-	int genchecksum = 0;
-	int ignchecksum = 0;
 	int hex_mode = 0;
 	int opt, i, j;
 
@@ -988,96 +957,6 @@ int main(int argc, char **argv)
 				u.device_channel = 4;
 			else
 				help();
-			break;
-		case 'Z':
-			{
-				char *endptr = NULL;
-				u.eeprom_size = strtol(optarg, &endptr, 0);
-				if (!endptr || *endptr != 0)
-					help();
-			}
-			break;
-		case 'G':
-			genchecksum = 1;
-			break;
-		case 'I':
-			ignchecksum = 1;
-			break;
-		case 'W':
-			{
-				gotaction = 1;
-				if (h_setup(&h) < 0)
-					return 1;
-				unsigned char eeprom_data[u.ftdic.eeprom_size];
-
-				FILE *f = fopen(optarg, "r");
-				if (f == NULL) {
-					fprintf(stderr, "Can't open EEPROM file `%s' for reading: %s\n", optarg, strerror(errno));
-					h_shutdown(&h);
-					return 1;
-				}
-				if (fread(eeprom_data, u.ftdic.eeprom_size, 1, f) != 1) {
-					fprintf(stderr, "Can't read EEPROM file `%s': %s\n", optarg, strerror(errno));
-					h_shutdown(&h);
-					return 1;
-				}
-				fclose(f);
-
-				uint16_t checksum = eeprom_checksum(eeprom_data, u.ftdic.eeprom_size-2);
-				if (genchecksum) {
-					eeprom_data[u.ftdic.eeprom_size-1] = checksum >> 8;
-					eeprom_data[u.ftdic.eeprom_size-2] = checksum;
-				}
-
-				uint16_t checksum_chip = (eeprom_data[u.ftdic.eeprom_size-1] << 8) | eeprom_data[u.ftdic.eeprom_size-2];
-				if (!ignchecksum && checksum != checksum_chip) {
-					fprintf(stderr, "ERROR: Checksum from EEPROM data is invalid! (is 0x%04x instead of 0x%04x)\n",
-							checksum_chip, checksum);
-					h_shutdown(&h);
-					return 1;
-				}
-
-				if (ftdi_write_eeprom(&u.ftdic, eeprom_data) < 0) {
-					fprintf(stderr, "Writing EEPROM data failed! (size=%d)\n", u.ftdic.eeprom_size);
-					h_shutdown(&h);
-					return 1;
-				}
-				if (h_shutdown(&h) < 0)
-					return 1;
-			}
-			break;
-		case 'R':
-			{
-				gotaction = 1;
-				if (h_setup(&h) < 0)
-					return 1;
-				int eeprom_size = u.ftdic.eeprom_size;
-				unsigned char eeprom_data[eeprom_size];
-				if (ftdi_read_eeprom(&u.ftdic, eeprom_data) < 0) {
-					fprintf(stderr, "Reading EEPROM data failed! (size=%d)\n", u.ftdic.eeprom_size);
-					h_shutdown(&h);
-					return 1;
-				}
-				if (h_shutdown(&h) < 0)
-					return 1;
-
-				FILE *f = fopen(optarg, "w");
-				if (f == NULL) {
-					fprintf(stderr, "Can't open EEPROM file `%s' for writing: %s\n", optarg, strerror(errno));
-					return 1;
-				}
-				if (fwrite(eeprom_data, eeprom_size, 1, f) != 1) {
-					fprintf(stderr, "Can't write EEPROM file `%s': %s\n", optarg, strerror(errno));
-					return 1;
-				}
-				fclose(f);
-
-				uint16_t checksum = eeprom_checksum(eeprom_data, eeprom_size-2);
-				uint16_t checksum_chip = (eeprom_data[eeprom_size-1] << 8) | eeprom_data[eeprom_size-2];
-				if (checksum != checksum_chip)
-					fprintf(stderr, "WARNING: Checksum from EEPROM data is invalid! (is 0x%04x instead of 0x%04x)\n",
-							checksum_chip, checksum);
-			}
 			break;
 		case 'x':
 		case 's':

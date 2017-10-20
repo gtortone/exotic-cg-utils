@@ -1,0 +1,43 @@
+#!/usr/bin/python3
+
+from pyftdi import spi
+import sys
+
+if len(sys.argv) < 2:
+  print("usage: dac.py <hex value>")
+  print("[value range: 0 (0x000) ... 4095 (0xFFF)]")
+  sys.exit(1)
+
+try:
+  value = int(sys.argv[1], 16)
+except Exception as e:
+  print(str(e))
+  sys.exit(1)
+
+if value > 4095 or value < 0:
+  print("ERR: value not valid")
+  print("value range: 0 (0x000) ... 4095 (0xFFF)")
+
+spi = spi.SpiController()
+
+spi.configure('ftdi://ftdi:4232h:FT02/1')
+
+# Get a port to a SPI slave w/ /CS on A*BUS3 and SPI mode 1 @ 1MHz
+slave = spi.get_port(cs=0, freq=1E6, mode=1)
+
+msb = (value >> 8)
+lsb = (value & 0xFF)
+
+byte = [msb, lsb]
+
+try:
+  slave.write(byte)
+except Exception as e:
+  print("ERR: SPI write error")
+  sys.exit(1)
+  
+print("INFO: successfully write to DAC")
+print("MSB = " + str(hex(msb)))
+print("LSB = " + str(hex(lsb)))
+
+sys.exit(0)

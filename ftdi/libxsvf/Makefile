@@ -24,7 +24,7 @@ AR = ar
 RANLIB = ranlib
 CC = gcc
 
-CFLAGS += -Wall -Os -ggdb -MD
+CFLAGS += -Wall -Os -ggdb -MD -I/usr/local/include/libftdi1
 #CFLAGS += -Wextra -Wno-unused-parameter -Werror
 
 help:
@@ -64,7 +64,7 @@ libxsvf.a: tap.o statename.o memname.o svf.o xsvf.o scan.o play.o
 
 xsvftool-gpio: libxsvf.a xsvftool-gpio.o
 
-xsvftool-ft232h: LDLIBS+=-lftdi -lm
+xsvftool-ft232h: LDLIBS+=-L/usr/local/lib -lftdi1 -lm
 xsvftool-ft232h: LDFLAGS+=-pthread
 xsvftool-ft232h.o: CFLAGS+=-pthread
 xsvftool-ft232h: libxsvf.a xsvftool-ft232h.o

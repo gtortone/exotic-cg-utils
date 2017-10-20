@@ -1,4 +1,4 @@
-#!/usr/bin/python -B
+#!/usr/bin/python3 -B
 
 from cypress import Cypress, CypressError, CypressShell
 from array import array
