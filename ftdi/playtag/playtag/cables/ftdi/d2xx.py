@@ -12,6 +12,7 @@ CHAR = FT.CHAR
 class SysInfo(list):
     def __init__(self):
         if FT.loaded:
+            FT.SetVIDPID(0x0483, 0x3747)	# include ST fake device in D2XX 
             numdevs = DWORD()
             FT.CreateDeviceInfoList(FT.byref(numdevs))
             devlist = (FT.DEVICE_LIST_INFO_NODE * (numdevs.value))()
