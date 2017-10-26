@@ -32,6 +32,7 @@ class Cypress():
         self.opc_wr = 0x10
         self.ep_rd = (6 | 128)
         self.ep_wr = 2
+        self.ep_data = (8 | 128)
         self.dev = None
 
     def open(self):
@@ -123,6 +124,16 @@ class Cypress():
         if(rdbuf[1] != seq):
             raise CypressSeqError("Cypress seq number error in WRITE(addr,val) response")
 
+    def readhist(self):
+        rdhist = array('B')
+        # read histogram
+        try:
+           rdhist = self.dev.read(self.ep_data, 1024)
+        except Exception as e:
+           #print(e)
+           raise CypressReadResponseError("Cypress error receiving histogram data")
+
+        return(rdhist)
 
 class CypressShell(cmd.Cmd):
     intro = 'Welcome to Cypress USB shell.   Type help or ? to list commands.\n'
@@ -180,6 +191,19 @@ class CypressShell(cmd.Cmd):
                     print(str(e))
                 else:
                     print("WRITE address(0x%04X" % addr + ") with value(0x%04X" % value + ") DONE")
+
+    def do_hist(self, arg):
+        'READ histogram from FPGA: hist'
+        rdsize = 0
+        self.cy.writemem(0x0002, 0x0001)	 # generate histogram
+        while True:
+           try:
+               hist = self.cy.readhist()
+               rdsize += hist.buffer_info()[1] * hist.itemsize
+           except CypressError as e:
+               print(str(rdsize) + " bytes read" )
+               #print(str(e))
+               break;
 
     def emptyline(self):
         None
