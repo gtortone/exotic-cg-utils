@@ -8,7 +8,7 @@ from array import array
 cysh = CypressShell()
 
 parser = OptionParser()
-parser.add_option("-f", "--fpga", action="store", type="choice", dest="fpga", choices=['spartan', 'artix'], help="FPGA USB channel")
+parser.add_option("-f", "--fpga", action="store", type="choice", dest="fpga", choices=['spartan', 'artix'], help="FPGA USB channel (spartan, artix)")
 (options, args) = parser.parse_args()
 
 if options.fpga is None:
