@@ -7,7 +7,7 @@ import cmd, sys
 
 class CypressError(Exception):
     """Base class for other exceptions"""
-    pass
+    pass 
 
 class CypressWriteRequestError(CypressError):
     """Raised if an USB write error occours"""
@@ -35,14 +35,17 @@ class Cypress():
         self.ep_data = (8 | 128)
         self.dev = None
 
-    def open(self):
-        self.dev = usb.core.find(idVendor=0x04b4, idProduct=0x8613)
+    def open(self, index):
+        self.lst = list(usb.core.find(idVendor=0x04b4, idProduct=0x8613, find_all=True))
 
-        if self.dev is None:
-            raise ValueError('Cypress device not found')
-
-        self.dev.set_configuration(1)
-        self.dev.set_interface_altsetting(interface = 0, alternate_setting = 1)
+        try:
+           self.dev = self.lst[index]
+        except Exception as e:
+          print("ERROR: Cypress device not found")
+          sys.exit(1)
+        else:
+           self.dev.set_configuration(1)
+           self.dev.set_interface_altsetting(interface = 0, alternate_setting = 1)
 
     def busclear(self):
         while True:
@@ -50,9 +53,6 @@ class Cypress():
                 data = self.dev.read(self.ep_rd, 1)
             except usb.core.USBError as e:
                 break
-
-    def close(self):
-        a = 1
 
     def readmem(self, addr):
         wrbuf = array('B')
@@ -141,8 +141,14 @@ class CypressShell(cmd.Cmd):
     file = None
 
     cy = Cypress()
-    cy.open()
-    cy.busclear()
+    
+    def open(self, index):
+       try:
+          self.cy.open(index)
+       except Exception as e:
+          print(str(e))
+       else:
+          self.cy.busclear()
 
     def do_load(self, arg):
         'Playback commands from a file: LOAD play.cmd'

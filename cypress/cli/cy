@@ -1,6 +1,23 @@
 #!/usr/bin/python3 -B
 
+import sys
+from optparse import OptionParser
 from cypress import Cypress, CypressError, CypressShell
 from array import array
 
-CypressShell().cmdloop()
+cysh = CypressShell()
+
+parser = OptionParser()
+parser.add_option("-f", "--fpga", action="store", type="choice", dest="fpga", choices=['spartan', 'artix'], help="FPGA USB channel")
+(options, args) = parser.parse_args()
+
+if options.fpga is None:
+   parser.print_help()
+   sys.exit(1)
+
+if options.fpga == 'spartan':
+   cysh.open(1)
+elif options.fpga == 'artix':
+   cysh.open(0)
+
+cysh.cmdloop()
