@@ -2,8 +2,7 @@
 
 import sys
 from optparse import OptionParser
-from cypress import Cypress, CypressError, CypressShell
-from array import array
+from cyshell import CypressShell
 
 cysh = CypressShell()
 
