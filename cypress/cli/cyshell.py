@@ -15,6 +15,7 @@ class CypressShell(cmd.Cmd):
        except Exception as e:
           print(str(e))
        else:
+          self.cy.config()
           self.cy.busclear()
 
     def do_load(self, arg):
@@ -46,7 +47,7 @@ class CypressShell(cmd.Cmd):
                 except CypressError as e:
                     print(str(e))
                 else:
-                    print("READ address(0x%04X" % addr + ") = " + "0x%04X" % value)
+                    print("READ address(0x%04X" % addr + ") = " + "0x%04X" % value + " [%d]" % value)
 
     def do_write(self, arg):
         'Send a WRITE command to Cypress: WRITE <addr> <value> (addr, value in hexadecimal)'
@@ -63,23 +64,18 @@ class CypressShell(cmd.Cmd):
                 except CypressError as e:
                     print(str(e))
                 else:
-                    print("WRITE address(0x%04X" % addr + ") with value(0x%04X" % value + ") DONE")
+                    print("WRITE address(0x%04X" % addr + ") with value(0x%04X" % value + ") [%d] DONE" % value)
 
     def do_hist(self, arg):
         'READ histogram from FPGA: hist'
-        rdsize = 0
-        self.cy.writemem(0x0002, 0x0001)	 # generate histogram
-        while True:
-           try:
-              hist = self.cy.readhist()
-              print(hist)
-           except CypressError as e:
-              #print(str(rdsize) + " bytes read" )
-              #print(str(e))
-              break;
-           else:
-              rdsize += len(hist)
+        hist, dead_time, time_meas, num_event, idle_time = self.cy.readhist()
+        print(hist)
+        rdsize = len(hist)
         print("elements read: {}".format(rdsize))
+        print("dead time: {}".format(dead_time))
+        print("time measurement: {}".format(time_meas))
+        print("number events: {}".format(num_event))
+        print("idle time: {}".format(idle_time))
 
     def emptyline(self):
         None
