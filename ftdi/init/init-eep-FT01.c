@@ -4,10 +4,10 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <getopt.h>
-#include <ftdi.h>
+#include <libftdi1/ftdi.h>
 
-#define USB_BUS		2
-#define USB_ADDR	3
+#define USB_BUS		1
+#define USB_ADDR	4
 
 int read_decode_eeprom(struct ftdi_context *ftdi)
 {
@@ -92,18 +92,6 @@ int main(void) {
       return -1;
    }
 
-   if (ftdi_set_eeprom_value(ftdi, VENDOR_ID, 0x0483) < 0) {
-      printf("ftdi_set_eeprom_value: (%s)\n", ftdi_get_error_string(ftdi));
-      ftdi_free(ftdi);
-      return -1;
-   }
-
-   if (ftdi_set_eeprom_value(ftdi, PRODUCT_ID, 0x3747) < 0) {
-      printf("ftdi_set_eeprom_value: (%s)\n", ftdi_get_error_string(ftdi));
-      ftdi_free(ftdi);
-      return -1;
-   }
-
    if (ftdi_set_eeprom_value(ftdi, CHIP_TYPE, 0x56) < 0) {	// EEPROM : 93x56
       printf("ftdi_set_eeprom_value: (%s)\n", ftdi_get_error_string(ftdi));
       ftdi_free(ftdi);
@@ -128,12 +116,13 @@ int main(void) {
       return -1;
    }
 
+   /*
    if (ftdi_set_eeprom_value(ftdi, CHANNEL_C_RS485, 1) < 0) {
       printf("ftdi_set_eeprom_value: (%s)\n", ftdi_get_error_string(ftdi));
       ftdi_free(ftdi);
       return -1;
    }
-
+   */
    if(ftdi_eeprom_build(ftdi) < 0) {
       printf("ftdi_eeprom_build: (%s)\n", ftdi_get_error_string(ftdi));
       ftdi_free(ftdi);

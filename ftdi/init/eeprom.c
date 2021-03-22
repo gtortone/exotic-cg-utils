@@ -9,7 +9,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <getopt.h>
-#include <ftdi.h>
+#include <libftdi1/ftdi.h>
 
 int read_decode_eeprom(struct ftdi_context *ftdi)
 {
