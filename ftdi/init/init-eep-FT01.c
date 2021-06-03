@@ -116,13 +116,12 @@ int main(void) {
       return -1;
    }
 
-   /*
    if (ftdi_set_eeprom_value(ftdi, CHANNEL_C_RS485, 1) < 0) {
       printf("ftdi_set_eeprom_value: (%s)\n", ftdi_get_error_string(ftdi));
       ftdi_free(ftdi);
       return -1;
    }
-   */
+   
    if(ftdi_eeprom_build(ftdi) < 0) {
       printf("ftdi_eeprom_build: (%s)\n", ftdi_get_error_string(ftdi));
       ftdi_free(ftdi);

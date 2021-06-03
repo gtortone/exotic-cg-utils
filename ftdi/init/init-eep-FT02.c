@@ -6,8 +6,8 @@
 #include <getopt.h>
 #include <libftdi1/ftdi.h>
 
-#define USB_BUS		1
-#define USB_ADDR	5
+#define USB_BUS		2
+#define USB_ADDR	3
 
 int read_decode_eeprom(struct ftdi_context *ftdi)
 {
@@ -115,14 +115,6 @@ int main(void) {
       ftdi_free(ftdi);
       return -1;
    }
-
-   /*
-   if (ftdi_set_eeprom_value(ftdi, CHANNEL_C_RS485, 1) < 0) {
-      printf("ftdi_set_eeprom_value: (%s)\n", ftdi_get_error_string(ftdi));
-      ftdi_free(ftdi);
-      return -1;
-   }
-   */
 
    if(ftdi_eeprom_build(ftdi) < 0) {
       printf("ftdi_eeprom_build: (%s)\n", ftdi_get_error_string(ftdi));
