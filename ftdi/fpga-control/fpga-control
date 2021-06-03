@@ -1,0 +1,73 @@
+#!/usr/bin/env python
+
+from pyftdi.gpio import GpioAsyncController
+import sys
+
+import ctypes
+c_uint8 = ctypes.c_uint8
+class Flags_bits( ctypes.LittleEndianStructure ):
+    _fields_ = [
+    ("ignore1",     c_uint8, 1 ),  # asByte & 1
+    ("ignore2",     c_uint8, 1 ),  # asByte & 2
+    ("ignore3",     c_uint8, 1 ),  # asByte & 4
+    ("ignore4",     c_uint8, 1 ),  # asByte & 8
+    ("reconf_spartan", c_uint8, 1 ),  # asByte & 16
+    ("status_spartan", c_uint8, 1 ),  # asByte & 32
+    ("reconf_artix",  c_uint8, 1 ),  # asByte & 64
+    ("status_artix",  c_uint8, 1 ),  # asByte & 128
+]
+
+class Flags( ctypes.Union ):
+    _anonymous_ = ("bit",)
+    _fields_ = [
+        ("bit",    Flags_bits ),
+        ("asByte", c_uint8    )
+    ]
+
+status = []
+status.insert(0, "NOT CONFIGURED")
+status.insert(1, "CONFIGURED")
+
+gpio = GpioAsyncController()
+
+#port C  GPIO FPGA 
+#bit 7:  FPGA done upper             (readonly)
+#bit 6:  FPGA reconfigure upper      (read/write)
+#bit 5:  FPGA done down              (readonly)
+#bit 4:  FPGA reconfigure down       (read/write)
+
+if len(sys.argv) < 2:
+    print("usage: fpga-control [reconf|status] {spartan,artix}")
+    sys.exit(1)
+
+gpio.configure('ftdi://ftdi:4232h:FT02/3', direction=0x50)
+
+if (sys.argv[1] == "status"):
+    fpgaFlags = Flags()
+    fpgaFlags.asByte = gpio.read()
+    print("Spartan FPGA status: " + status[fpgaFlags.status_spartan])
+    print("Artix FPGA status: " + status[fpgaFlags.status_artix])
+elif (sys.argv[1] == "reconf"):
+    fpgaFlags = Flags()
+    if(sys.argv[2] == "spartan"):
+        fpgaFlags.reconf_spartan = 0
+        gpio.write(fpgaFlags.asByte)
+        fpgaFlags.reconf_spartan = 1
+        gpio.write(fpgaFlags.asByte)
+        print("Spartan FPGA reconfigure set")
+    elif(sys.argv[2] == "artix"):
+        fpgaFlags.reconf_artix= 0
+        gpio.write(fpgaFlags.asByte)
+        fpgaFlags.reconf_artix= 1
+        gpio.write(fpgaFlags.asByte)
+        print("Artix FPGA reconfigure set")
+    else:
+        print("Error: wrong FPGA name")
+        sys.exit(-1)
+else:
+    print("Error: wrong option")
+    sys.exit(-1)
+
+gpio.close()
+
+sys.exit(0)
