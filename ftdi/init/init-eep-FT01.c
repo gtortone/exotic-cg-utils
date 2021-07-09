@@ -116,6 +116,30 @@ int main(void) {
       return -1;
    }
 
+   if (ftdi_set_eeprom_value(ftdi, CHANNEL_A_DRIVER, DRIVER_VCP) < 0) {
+      printf("ftdi_set_eeprom_value: (%s)\n", ftdi_get_error_string(ftdi));
+      ftdi_free(ftdi);
+      return -1;
+   }
+
+   if (ftdi_set_eeprom_value(ftdi, CHANNEL_B_DRIVER, DRIVER_VCP) < 0) {
+      printf("ftdi_set_eeprom_value: (%s)\n", ftdi_get_error_string(ftdi));
+      ftdi_free(ftdi);
+      return -1;
+   }
+
+   if (ftdi_set_eeprom_value(ftdi, CHANNEL_C_DRIVER, DRIVER_VCP) < 0) {
+      printf("ftdi_set_eeprom_value: (%s)\n", ftdi_get_error_string(ftdi));
+      ftdi_free(ftdi);
+      return -1;
+   }
+
+   if (ftdi_set_eeprom_value(ftdi, CHANNEL_D_DRIVER, DRIVER_VCP) < 0) {
+      printf("ftdi_set_eeprom_value: (%s)\n", ftdi_get_error_string(ftdi));
+      ftdi_free(ftdi);
+      return -1;
+   }
+
    if (ftdi_set_eeprom_value(ftdi, CHANNEL_C_RS485, 1) < 0) {
       printf("ftdi_set_eeprom_value: (%s)\n", ftdi_get_error_string(ftdi));
       ftdi_free(ftdi);
